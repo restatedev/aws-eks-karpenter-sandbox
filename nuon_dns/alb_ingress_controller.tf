@@ -78,6 +78,17 @@ resource "helm_release" "alb_ingress_controller" {
     value = "alb-ingress-controller"
   }
 
+  // these two are needed when the imds hop limit is 1 (true for karpenter nodes)
+  set {
+    name  = "region"
+    value = var.region
+  }
+
+  set {
+    name  = "vpcId"
+    value = var.vpc_id
+  }
+
   # toleration require to allow these to run on the main karpenter mng ng
   values = [
     yamlencode({
@@ -87,12 +98,13 @@ resource "helm_release" "alb_ingress_controller" {
           value  = "true"
           effect = "NoSchedule"
         },
-        {
-          key    = "karpenter.sh/controller"
-          value  = "true"
-          effect = "NoSchedule"
-        },
       ]
+      resources = {
+        requests = {
+          cpu    = "10m",
+          memory = "32Mi",
+        }
+      }
     })
   ]
 

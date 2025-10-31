@@ -17,19 +17,22 @@ locals {
 #       but the role is immutable on the ec2nodeclass
 resource "aws_iam_instance_profile" "karpenter" {
   name = local.karpenter.instance_profile_name
-  role = module.eks.eks_managed_node_groups["karpenter"].iam_role_name
+  role = module.karpenter.node_iam_role_name
 }
 
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
   version = "20.33.1"
 
-  cluster_name        = local.karpenter.cluster_name
-  namespace           = local.karpenter.namespace
-  create_access_entry = false
+  cluster_name = local.karpenter.cluster_name
+  namespace    = local.karpenter.namespace
 
-  create_node_iam_role = false
-  node_iam_role_arn    = module.eks.eks_managed_node_groups["karpenter"].iam_role_arn
+  # Create a dedicated node IAM role for Karpenter-managed nodes
+  create_node_iam_role = true
+  node_iam_role_additional_policies = {
+    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  }
+  node_iam_role_use_name_prefix = false
 
   create_instance_profile = false
 
@@ -119,18 +122,6 @@ resource "helm_release" "karpenter" {
           "eks.amazonaws.com/role-arn" : module.karpenter.iam_role_arn
         }
       }
-      tolerations : [
-        {
-          key : "karpenter.sh/controller"
-          value : "true"
-          effect : "NoSchedule"
-        },
-        {
-          key : "CriticalAddonsOnly"
-          value : "true"
-          effect : "NoSchedule"
-        },
-      ]
     }),
   ]
 
@@ -175,7 +166,7 @@ resource "kubectl_manifest" "karpenter_ec2nodeclass_default" {
       name = "default"
     }
     spec = {
-      instanceProfile  = "KarpenterNodeInstanceProfile-${local.karpenter.cluster_name}"
+      instanceProfile  = local.karpenter.instance_profile_name
       amiSelectorTerms = local.default_nodeclass_ami_selector_terms
       # without this, pods on karpenter nodes can't use the IAM node role
       # https://github.com/aws/karpenter-provider-aws/issues/7548#issuecomment-2558191953

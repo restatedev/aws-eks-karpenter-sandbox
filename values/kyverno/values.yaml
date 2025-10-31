@@ -35,15 +35,19 @@ backgroundController:
         matchLabels:
           app.kubernetes.io/component: background-controller
 cleanupController:
-  replicas: 2
+  replicas: 1
 reportsController:
-  replicas: 2
+  replicas: 1
+  
+webhooksCleanup:
+  image:
+    repository: bitnamilegacy/kubectl
+policyReportsCleanup:
+  image:
+    repository: bitnamilegacy/kubectl
 
 global:
   tolerations:
   - effect: NoSchedule
     key: CriticalAddonsOnly
-    value: "true"
-  - effect: NoSchedule
-    key: karpenter.sh/controller
     value: "true"

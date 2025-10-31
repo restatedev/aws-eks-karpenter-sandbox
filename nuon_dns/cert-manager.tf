@@ -54,55 +54,59 @@ resource "helm_release" "cert_manager" {
   # toleration require to allow these to run on the main karpenter mng ng
   values = [
     yamlencode({
+      resources = {
+        requests = {
+          cpu    = "10m",
+          memory = "32Mi",
+        }
+      }
       tolerations = [
         {
           key    = "CriticalAddonsOnly"
           value  = "true"
           effect = "NoSchedule"
         },
-        {
-          key    = "karpenter.sh/controller"
-          value  = "true"
-          effect = "NoSchedule"
-        },
       ]
       webhook = {
+        resources = {
+          requests = {
+            cpu    = "10m",
+            memory = "32Mi",
+          }
+        }
         tolerations = [
           {
             key    = "CriticalAddonsOnly"
             value  = "true"
             effect = "NoSchedule"
-          },
-          {
-            key    = "karpenter.sh/controller"
-            value  = "true"
-            effect = "NoSchedule"
-          },
+          }
         ]
       }
       cainjector = {
+        resources = {
+          requests = {
+            cpu    = "10m",
+            memory = "32Mi",
+          }
+        }
         tolerations = [
           {
             key    = "CriticalAddonsOnly"
-            value  = "true"
-            effect = "NoSchedule"
-          },
-          {
-            key    = "karpenter.sh/controller"
             value  = "true"
             effect = "NoSchedule"
           },
         ]
       }
       startupapicheck = {
+        resources = {
+          requests = {
+            cpu    = "10m",
+            memory = "32Mi",
+          }
+        }
         tolerations = [
           {
             key    = "CriticalAddonsOnly"
-            value  = "true"
-            effect = "NoSchedule"
-          },
-          {
-            key    = "karpenter.sh/controller"
             value  = "true"
             effect = "NoSchedule"
           },

@@ -519,3 +519,19 @@ rules:
   verbs:
   - 'create'
   - '*'
+# allow access to Linkerd CRDs
+- apiGroups:
+    - policy.linkerd.io
+    - workload.linkerd.io
+    - linkerd.io
+  resources:
+    - "*"
+  verbs:
+    - "*"
+# allow access to Gateway CRDs
+- apiGroups:
+    - gateway.networking.k8s.io
+  resources:
+    - "*"
+  verbs:
+    - "*"

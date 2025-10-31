@@ -153,30 +153,11 @@ variable "cluster_name" {
   default     = ""
 }
 
-variable "min_size" {
-  type        = number
-  default     = 2
-  description = "The minimum number of nodes in the managed node group."
-}
-
-variable "max_size" {
-  type        = number
-  default     = 5
-  description = "The maximum number of nodes in the managed node group."
-}
-
-variable "desired_size" {
-  type        = number
-  default     = 3
-  description = "The desired number of nodes in the managed node group."
-}
-
 variable "default_instance_type" {
   type        = string
   default     = "t3a.medium"
   description = "The EC2 instance type to use for the EKS cluster's default node group."
 }
-
 
 variable "additional_tags" {
   type        = map(any)
