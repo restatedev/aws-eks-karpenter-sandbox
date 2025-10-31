@@ -35,9 +35,9 @@ backgroundController:
         matchLabels:
           app.kubernetes.io/component: background-controller
 cleanupController:
-  replicas: 2
+  replicas: 1
 reportsController:
-  replicas: 2
+  replicas: 1
 
 global:
   tolerations:

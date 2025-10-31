@@ -24,7 +24,7 @@ output "cluster" {
     cluster_security_group_id         = module.eks.cluster_security_group_id
 
     node_security_group_id = module.eks.node_security_group_id
-    node_groups            = module.eks.eks_managed_node_groups
+    fargate_profiles       = module.eks.fargate_profiles
   }
   description = "A map of EKS cluster attributes: arn, certificate_authority_data, endpoint, name, platform_version, status, oidc_issuer_url, oidc_provider_arn, cluster_security_group_id, node_security_group_id."
 }
@@ -65,6 +65,11 @@ output "ecr" {
   description = "A map of ECR attributes: repository_url, repository_arn, repository_name, registry_id, registry_url."
 }
 
+output "linkerd" {
+  value = {
+    all_egress_traffic = module.linkerd.all_egress_traffic
+  }
+}
 
 output "nuon_dns" {
   value = {
@@ -88,12 +93,6 @@ output "nuon_dns" {
       id       = local.nuon_dns.enabled ? module.nuon_dns[0].cert_manager.release.id : ""
       chart    = local.nuon_dns.enabled ? module.nuon_dns[0].cert_manager.release.chart : ""
       revision = local.nuon_dns.enabled ? module.nuon_dns[0].cert_manager.release.revision : ""
-    }
-    ingress_nginx = {
-      enabled  = local.nuon_dns.enabled
-      id       = local.nuon_dns.enabled ? module.nuon_dns[0].ingress_nginx.release.id : ""
-      chart    = local.nuon_dns.enabled ? module.nuon_dns[0].ingress_nginx.release.chart : ""
-      revision = local.nuon_dns.enabled ? module.nuon_dns[0].ingress_nginx.release.revision : ""
     }
   }
   description = "A map of Nuon DNS attributes: whether nuon.run has been enabled; AWS Route 53 details for the public_domain and internal_domain; metadata bout the helm charts the module installs on."

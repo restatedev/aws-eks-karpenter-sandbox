@@ -29,7 +29,7 @@ resource "helm_release" "ebs_csi" {
   name       = local.ebs_csi.name
   repository = "https://kubernetes-sigs.github.io/aws-ebs-csi-driver"
   chart      = "aws-ebs-csi-driver"
-  version    = "2.16.0"
+  version    = "2.48.0"
 
   provider = helm.main
 
@@ -47,17 +47,29 @@ resource "helm_release" "ebs_csi" {
         }
         tolerations : [
           {
-            key    = "karpenter.sh/controller"
-            value  = "true"
-            effect = "NoSchedule"
-          },
-          {
             key : "CriticalAddonsOnly"
             value : "true"
             effect : "NoSchedule"
           },
         ]
       }
+      storageClasses : [
+        {
+          name : "gp3",
+          annotations : {
+            "storageclass.kubernetes.io/is-default-class" : "true"
+          }
+          parameters : {
+            encrypted : "true",
+            "csi.storage.k8s.io/fstype" : "xfs",
+            type : "gp3",
+          },
+          provisioner : "ebs.csi.aws.com",
+          reclaimPolicy : "Delete",
+          volumeBindingMode : "WaitForFirstConsumer",
+          allowVolumeExpansion : true,
+        }
+      ]
     }),
   ]
 
@@ -66,5 +78,6 @@ resource "helm_release" "ebs_csi" {
     module.ebs_csi_irsa,
     module.eks,
     resource.aws_security_group_rule.runner_cluster_access,
+    kubectl_manifest.karpenter_nodepool_default,
   ]
 }

@@ -20,9 +20,6 @@ module "nuon-aws-eks-sandbox" {
   # cluster
   cluster_version       = var.cluster_version
   cluster_name          = var.cluster_name
-  min_size              = var.min_size
-  max_size              = var.max_size
-  desired_size          = var.desired_size
   default_instance_type = var.default_instance_type
 
   # toggleable components

@@ -35,7 +35,6 @@
 | [helm_release.alb_ingress_controller](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release)            | resource |
 | [helm_release.cert_manager](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release)                      | resource |
 | [helm_release.external_dns](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release)                      | resource |
-| [helm_release.ingress_nginx](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release)                     | resource |
 | [kubectl_manifest.internal_cluster_issuer](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest) | resource |
 | [kubectl_manifest.public_cluster_issuer](https://registry.terraform.io/providers/gavinbunney/kubectl/latest/docs/resources/manifest)   | resource |
 
@@ -59,6 +58,5 @@
 | <a name="output_alb_ingress_controller"></a> [alb_ingress_controller](#output_alb_ingress_controller) | n/a         |
 | <a name="output_cert_manager"></a> [cert_manager](#output_cert_manager)                               | n/a         |
 | <a name="output_external_dns"></a> [external_dns](#output_external_dns)                               | n/a         |
-| <a name="output_ingress_nginx"></a> [ingress_nginx](#output_ingress_nginx)                            | n/a         |
 | <a name="output_internal_domain"></a> [internal_domain](#output_internal_domain)                      | n/a         |
 | <a name="output_public_domain"></a> [public_domain](#output_public_domain)                            | n/a         |
