@@ -51,6 +51,7 @@ resource "kubectl_manifest" "vendor_policies" {
   yaml_body = file("${var.kyverno_policy_dir}/${each.key}")
 
   depends_on = [
-    helm_release.kyverno
+    helm_release.kyverno,
+    module.linkerd, // vendor policies may reference Linkerd CRDs (e.g. policy.linkerd.io/v1beta3)
   ]
 }
