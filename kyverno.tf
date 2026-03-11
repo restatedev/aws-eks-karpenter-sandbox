@@ -50,8 +50,14 @@ resource "kubectl_manifest" "vendor_policies" {
 
   yaml_body = file("${var.kyverno_policy_dir}/${each.key}")
 
+  // Avoid destroy-time cycle: Terraform state retains a stale depends_on on
+  // module.linkerd from a prior apply, creating a cycle through the kubectl
+  // provider and EKS cluster during destroy planning.
+  lifecycle {
+    create_before_destroy = true
+  }
+
   depends_on = [
     helm_release.kyverno,
-    module.linkerd, // vendor policies may reference Linkerd CRDs (e.g. policy.linkerd.io/v1beta3)
   ]
 }
