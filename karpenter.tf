@@ -204,11 +204,6 @@ locals {
       memory = "200Gi"
     }
     template = {
-      metadata = {
-        labels = {
-          "eks.amazonaws.com/compute-type" = "ec2"
-        }
-      }
       spec = {
         expireAfter = "732h"
         nodeClassRef = {

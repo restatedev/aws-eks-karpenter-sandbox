@@ -2,9 +2,8 @@
 // Enables pods to mount secrets from AWS Secrets Manager as volumes
 // via SecretProviderClass resources.
 //
-// Karpenter nodes are labeled eks.amazonaws.com/compute-type=ec2 (via NodePool
-// template). The affinity excludes Fargate nodes where DaemonSet pods would
-// stay Pending indefinitely.
+// Uses nodeSelector to target Karpenter nodes only (karpenter.sh/nodepool=default),
+// avoiding Fargate nodes where DaemonSet pods stay Pending indefinitely.
 
 resource "aws_eks_addon" "secrets_store_csi" {
   cluster_name  = module.eks.cluster_name
@@ -16,7 +15,7 @@ resource "aws_eks_addon" "secrets_store_csi" {
 
   configuration_values = jsonencode({
     nodeSelector = {
-      "eks.amazonaws.com/compute-type" = "ec2"
+      "karpenter.sh/nodepool" = "default"
     }
     "secrets-store-csi-driver" = {
       syncSecret = { enabled = true }
