@@ -14,7 +14,8 @@ module "linkerd" {
   depends_on = [
     module.eks,
     resource.aws_security_group_rule.runner_cluster_access,
-    module.nuon_dns[0].cert_manager,             // Certificate crd
-    kubectl_manifest.karpenter_nodepool_default, // so we have nodes to run on
+    module.nuon_dns[0].cert_manager,             // Certificate CRD
+    module.nuon_dns[0].alb_ingress_controller,   // ALB webhook must be ready before creating Services
+    kubectl_manifest.karpenter_nodepool_default, // We must first have nodes to run on
   ]
 }
