@@ -1,0 +1,30 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: mutate-csi-driver-nodeselector
+  annotations:
+    policies.kyverno.io/title: Target CSI Driver DaemonSets to Karpenter Nodes
+    policies.kyverno.io/category: EKS Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: DaemonSet
+    policies.kyverno.io/description: >-
+      The EKS Secrets Store CSI Driver addon does not expose nodeSelector
+      configuration for the CSI driver DaemonSet. This policy mutates DaemonSet
+      pods in the aws-secrets-manager namespace to target Karpenter nodes only,
+      preventing pods from being scheduled on Fargate nodes where DaemonSets
+      stay Pending indefinitely.
+spec:
+  rules:
+    - name: add-karpenter-nodeselector
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - aws-secrets-manager
+      mutate:
+        patchStrategicMerge:
+          spec:
+            nodeSelector:
+              karpenter.sh/nodepool: default
