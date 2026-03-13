@@ -47,7 +47,7 @@ resource "aws_iam_role_policy" "ack_eks_pod_identity" {
       },
       {
         Effect   = "Allow"
-        Action   = "iam:PassRole"
+        Action   = ["iam:PassRole", "iam:GetRole"]
         Resource = aws_iam_role.restate_environment[0].arn
       },
     ]
