@@ -17,30 +17,40 @@ module "ack_eks_irsa" {
     }
   }
 
-  inline_policy_statements = [
-    {
-      effect = "Allow"
-      actions = [
-        "eks:CreatePodIdentityAssociation",
-        "eks:DeletePodIdentityAssociation",
-        "eks:DescribePodIdentityAssociation",
-        "eks:ListPodIdentityAssociations",
-        "eks:UpdatePodIdentityAssociation",
-      ]
-      resources = ["*"]
-    },
-    {
-      effect    = "Allow"
-      actions   = ["iam:PassRole"]
-      resources = [aws_iam_role.restate_environment[0].arn]
-    },
-  ]
-
   tags = merge(local.tags, {
     "sandbox.nuon.co/module" = "ack_eks"
   })
 
   depends_on = [module.eks]
+}
+
+resource "aws_iam_role_policy" "ack_eks_pod_identity" {
+  count = var.restate_environment_role_enabled ? 1 : 0
+
+  name = "ack-eks-pod-identity"
+  role = module.ack_eks_irsa[0].iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "eks:CreatePodIdentityAssociation",
+          "eks:DeletePodIdentityAssociation",
+          "eks:DescribePodIdentityAssociation",
+          "eks:ListPodIdentityAssociations",
+          "eks:UpdatePodIdentityAssociation",
+        ]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = aws_iam_role.restate_environment[0].arn
+      },
+    ]
+  })
 }
 
 resource "helm_release" "ack_eks" {
