@@ -41,6 +41,7 @@ resource "aws_iam_role_policy" "ack_eks_pod_identity" {
           "eks:DescribePodIdentityAssociation",
           "eks:ListPodIdentityAssociations",
           "eks:UpdatePodIdentityAssociation",
+          "eks:TagResource",
         ]
         Resource = "*"
       },
