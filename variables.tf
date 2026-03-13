@@ -289,6 +289,19 @@ variable "karpenter_ec2nodeclass_default_metadata_options" {
   }
 }
 
+# RestateEnvironment Pod Identity role
+variable "restate_environment_role_enabled" {
+  type        = bool
+  description = "Whether to create the RestateEnvironment IAM role for Restate pods. The role is assumed via EKS Pod Identity and grants scoped S3 access for snapshots."
+  default     = false
+}
+
+variable "restate_environment_storage_bucket_arn" {
+  type        = string
+  description = "ARN of the S3 bucket used for Restate environment snapshots. Required when restate_environment_role_enabled is true."
+  default     = ""
+}
+
 variable "additional_tags" {
   type        = map(any)
   description = "Extra tags to append to the default tags that will be added to install resources."

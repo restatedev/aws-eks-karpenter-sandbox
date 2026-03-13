@@ -120,3 +120,11 @@ output "additional_irsa" {
   value = { for ai in module.additional_irsa : ai.iam_role_name => ai }
 }
 
+output "restate_environment_role" {
+  value = var.restate_environment_role_enabled ? {
+    arn  = aws_iam_role.restate_environment[0].arn
+    name = aws_iam_role.restate_environment[0].name
+  } : null
+  description = "The RestateEnvironment IAM role for Restate pods, assumed via EKS Pod Identity. Customers can attach additional policies for their own use cases."
+}
+
