@@ -70,6 +70,12 @@ data "aws_iam_policy_document" "secrets_pod_identity_trust" {
   }
 }
 
+locals {
+  // Secrets Manager appends a random suffix to the secret ARN, so scope access
+  // to this install's region token by matching the stable name prefix.
+  restate_cloud_region_token_secret_arn = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.nuon_id}/restatecloudregiontoken-*"
+}
+
 resource "aws_iam_role" "secrets_pod_identity" {
   name               = "secrets-pod-identity-${var.nuon_id}"
   assume_role_policy = data.aws_iam_policy_document.secrets_pod_identity_trust.json
@@ -87,7 +93,7 @@ resource "aws_iam_role_policy" "secrets_pod_identity" {
         "secretsmanager:GetSecretValue",
         "secretsmanager:DescribeSecret",
       ]
-      Resource = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:*"
+      Resource = local.restate_cloud_region_token_secret_arn
     }]
   })
 }
@@ -107,4 +113,3 @@ resource "aws_eks_pod_identity_association" "tunnel" {
   role_arn        = aws_iam_role.secrets_pod_identity.arn
   tags            = local.tags
 }
-
