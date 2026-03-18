@@ -305,7 +305,7 @@ variable "restate_environment_storage_bucket_arn" {
   default     = ""
 
   validation {
-    condition     = !var.restate_environment_role_enabled || trim(var.restate_environment_storage_bucket_arn) != ""
+    condition     = !var.restate_environment_role_enabled || trimspace(var.restate_environment_storage_bucket_arn) != ""
     error_message = "restate_environment_storage_bucket_arn must be set when restate_environment_role_enabled is true."
   }
 }
