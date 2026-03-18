@@ -243,7 +243,7 @@ variable "cluster_name" {
 
 variable "cluster_endpoint_public_access" {
   type        = bool
-  description = "Whether the EKS cluster API server endpoint is publicly accessible."
+  description = "Whether the EKS cluster API server endpoint is publicly accessible. Defaults to true because the Restate Cloud control plane later reaches the cluster API from outside the customer VPC. Disabling this requires additional private connectivity that is not yet supported."
   default     = true
 }
 
