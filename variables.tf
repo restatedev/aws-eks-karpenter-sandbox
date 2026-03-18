@@ -303,6 +303,11 @@ variable "restate_environment_storage_bucket_arn" {
   type        = string
   description = "ARN of the S3 bucket used for Restate environment snapshots. Required when restate_environment_role_enabled is true."
   default     = ""
+
+  validation {
+    condition     = !var.restate_environment_role_enabled || trim(var.restate_environment_storage_bucket_arn) != ""
+    error_message = "restate_environment_storage_bucket_arn must be set when restate_environment_role_enabled is true."
+  }
 }
 
 variable "additional_tags" {
