@@ -237,8 +237,10 @@ resource "kubectl_manifest" "karpenter_ec2nodeclass_default" {
 //   NodePool → drain_barrier → EC2NodeClass → helm_release.karpenter → module.eks
 resource "terraform_data" "karpenter_drain_barrier" {
   triggers_replace = {
-    cluster_name = local.cluster_name
-    region       = var.region
+    cluster_ca_data  = module.eks.cluster_certificate_authority_data
+    cluster_endpoint = module.eks.cluster_endpoint
+    cluster_name     = local.cluster_name
+    region           = var.region
   }
 
   provisioner "local-exec" {
@@ -247,8 +249,50 @@ resource "terraform_data" "karpenter_drain_barrier" {
     command     = <<-EOT
       set -euo pipefail
 
+      KUBECONFIG_FILE=$(mktemp)
+      CA_FILE=$(mktemp)
       CLUSTER="${self.triggers_replace.cluster_name}"
+      ENDPOINT="${self.triggers_replace.cluster_endpoint}"
       REGION="${self.triggers_replace.region}"
+
+      cleanup() {
+        rm -f "$KUBECONFIG_FILE" "$CA_FILE"
+      }
+
+      trap cleanup EXIT
+
+      if ! printf '%s' '${self.triggers_replace.cluster_ca_data}' | base64 --decode > "$CA_FILE" 2>/dev/null; then
+        printf '%s' '${self.triggers_replace.cluster_ca_data}' | base64 -D > "$CA_FILE"
+      fi
+
+      cat > "$KUBECONFIG_FILE" <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- name: eks
+  cluster:
+    certificate-authority: $CA_FILE
+    server: $ENDPOINT
+contexts:
+- name: eks
+  context:
+    cluster: eks
+    user: eks
+current-context: eks
+users:
+- name: eks
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      command: aws
+      args:
+      - eks
+      - get-token
+      - --region
+      - $REGION
+      - --cluster-name
+      - $CLUSTER
+EOF
 
       karpenter_instances() {
         aws ec2 describe-instances \
@@ -264,7 +308,7 @@ resource "terraform_data" "karpenter_drain_barrier" {
       # 1. Explicitly delete all NodeClaims as a backup for the NodePool
       #    ownerReference cascade, which can be blocked by PDBs or stuck pods.
       echo "Deleting all NodeClaims..."
-      if ! kubectl delete nodeclaims --all --wait=false 2>&1; then
+      if ! kubectl --kubeconfig "$KUBECONFIG_FILE" delete nodeclaims --all --wait=false 2>&1; then
         echo "WARNING: kubectl delete nodeclaims failed — drain may not proceed cleanly"
       fi
 
