@@ -2,6 +2,11 @@
 # the Restate operator to bind IAM roles to environment pods via Pod Identity.
 # Only installed when the RestateEnvironment role is enabled.
 
+locals {
+  ack_eks_cluster_arn                  = "arn:aws:eks:${var.region}:${data.aws_caller_identity.current.account_id}:cluster/${local.cluster_name}"
+  ack_eks_pod_identity_association_arn = "arn:aws:eks:${var.region}:${data.aws_caller_identity.current.account_id}:podidentityassociation/${local.cluster_name}/*"
+}
+
 module "ack_eks_irsa" {
   count = var.restate_environment_role_enabled ? 1 : 0
 
@@ -37,13 +42,19 @@ resource "aws_iam_role_policy" "ack_eks_pod_identity" {
         Effect = "Allow"
         Action = [
           "eks:CreatePodIdentityAssociation",
+          "eks:ListPodIdentityAssociations",
+        ]
+        Resource = local.ack_eks_cluster_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "eks:DeletePodIdentityAssociation",
           "eks:DescribePodIdentityAssociation",
-          "eks:ListPodIdentityAssociations",
           "eks:UpdatePodIdentityAssociation",
           "eks:TagResource",
         ]
-        Resource = "*"
+        Resource = local.ack_eks_pod_identity_association_arn
       },
       {
         Effect   = "Allow"
