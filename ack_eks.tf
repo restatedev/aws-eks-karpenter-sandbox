@@ -94,6 +94,7 @@ resource "helm_release" "ack_eks" {
   depends_on = [
     module.eks,
     module.ack_eks_irsa,
-    helm_release.karpenter, # ensure nodes exist for scheduling
+    helm_release.karpenter,
+    kubectl_manifest.karpenter_nodepool_default, # ensure Karpenter can provision nodes for ACK
   ]
 }
