@@ -351,7 +351,9 @@ EOF
           --output text)
         for eni in $ENI_IDS; do
           echo "Deleting orphaned ENI $eni"
-          aws ec2 delete-network-interface --region "$REGION" --network-interface-id "$eni"
+          if ! aws ec2 delete-network-interface --region "$REGION" --network-interface-id "$eni"; then
+            echo "WARNING: Failed to delete orphaned ENI $eni"
+          fi
         done
       done
     EOT
