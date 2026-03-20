@@ -5,6 +5,7 @@ locals {
     default_policies = [
       "${path.module}/values/kyverno/policies/restrict-binding-system-groups.yaml",
       "${path.module}/values/kyverno/policies/restrict-secret-role-verbs.yaml",
+      "${path.module}/values/kyverno/policies/mutate-csi-driver-nodeselector.yaml",
     ]
   }
 }
@@ -29,6 +30,7 @@ resource "helm_release" "kyverno" {
     module.eks,
     resource.aws_security_group_rule.runner_cluster_access,
     kubectl_manifest.karpenter_nodepool_default,
+    terraform_data.linkerd_policy_crds_discoverable, // Kyverno must start after Linkerd policy CRDs are discoverable
   ]
 }
 
@@ -50,8 +52,15 @@ resource "kubectl_manifest" "vendor_policies" {
 
   yaml_body = file("${var.kyverno_policy_dir}/${each.key}")
 
+  // Avoid destroy-time cycle: Terraform state retains a stale depends_on on
+  // module.linkerd from a prior apply, creating a cycle through the kubectl
+  // provider and EKS cluster during destroy planning.
+  lifecycle {
+    create_before_destroy = true
+  }
+
   depends_on = [
     helm_release.kyverno,
-    module.linkerd, // vendor policies may reference Linkerd CRDs (e.g. policy.linkerd.io/v1beta3)
+    terraform_data.linkerd_policy_crds_discoverable, # vendor policies reference Linkerd CRDs (policy.linkerd.io/v1beta3/Server)
   ]
 }

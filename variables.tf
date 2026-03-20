@@ -243,8 +243,8 @@ variable "cluster_name" {
 
 variable "cluster_endpoint_public_access" {
   type        = bool
-  description = "Whether the EKS cluster API server endpoint is publicly accessible."
-  default     = false
+  description = "Whether the EKS cluster API server endpoint is publicly accessible. Defaults to true because the Restate Cloud control plane later reaches the cluster API from outside the customer VPC. Disabling this requires additional private connectivity that is not yet supported."
+  default     = true
 }
 
 variable "default_instance_type" {
@@ -284,8 +284,29 @@ variable "karpenter_ec2nodeclass_default_metadata_options" {
   default = {
     httpEndpoint            = "enabled"
     httpProtocolIPv6        = "disabled"
-    httpPutResponseHopLimit = 1
+    # Hop limit 2 required: pods traverse an extra network hop through the container
+    # bridge to reach IMDS. At limit 1, IMDS requests time out and pods can't detect
+    # the AWS region or assume their Pod Identity role (e.g. for S3 snapshot access).
+    httpPutResponseHopLimit = 2
     httpTokens              = "required"
+  }
+}
+
+# RestateEnvironment Pod Identity role
+variable "restate_environment_role_enabled" {
+  type        = bool
+  description = "Whether to create the RestateEnvironment IAM role for Restate pods. The role is assumed via EKS Pod Identity and grants scoped S3 access for snapshots."
+  default     = false
+}
+
+variable "restate_environment_storage_bucket_arn" {
+  type        = string
+  description = "ARN of the S3 bucket used for Restate environment snapshots. Required when restate_environment_role_enabled is true."
+  default     = ""
+
+  validation {
+    condition     = !var.restate_environment_role_enabled || trimspace(var.restate_environment_storage_bucket_arn) != ""
+    error_message = "restate_environment_storage_bucket_arn must be set when restate_environment_role_enabled is true."
   }
 }
 

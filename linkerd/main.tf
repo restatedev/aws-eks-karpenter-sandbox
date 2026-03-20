@@ -14,6 +14,17 @@ resource "helm_release" "linkerd_crds" {
   version    = "2025.8.5"
 }
 
+resource "terraform_data" "linkerd_crds_release" {
+  input = {
+    name    = helm_release.linkerd_crds.name
+    version = helm_release.linkerd_crds.version
+  }
+
+  lifecycle {
+    replace_triggered_by = [helm_release.linkerd_crds]
+  }
+}
+
 resource "helm_release" "cert_manager_trust" {
   namespace        = local.cert_manager.namespace
   create_namespace = false

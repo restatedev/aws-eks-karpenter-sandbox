@@ -72,6 +72,15 @@ module "aws_privateca_issuer_irsa" {
   tags = var.tags
 }
 
+// IAM eventual consistency: the OIDC trust policy and role policy attachment
+// can take 10-30s to propagate. Without this, the PCA issuer pod assumes the
+// role before IAM recognizes the policy, causing DescribeCertificateAuthority
+// to fail with AccessDeniedException.
+resource "time_sleep" "wait_for_irsa_propagation" {
+  create_duration = "30s"
+  depends_on      = [module.aws_privateca_issuer_irsa]
+}
+
 resource "helm_release" "aws_privateca_issuer" {
   namespace        = local.cert_manager.namespace
   create_namespace = false
@@ -91,6 +100,8 @@ resource "helm_release" "aws_privateca_issuer" {
       }
     })
   ]
+
+  depends_on = [time_sleep.wait_for_irsa_propagation]
 }
 
 resource "kubectl_manifest" "linkerd_issuer" {
