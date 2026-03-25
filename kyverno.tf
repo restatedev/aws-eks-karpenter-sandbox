@@ -20,7 +20,7 @@ resource "helm_release" "kyverno" {
   name       = "kyverno"
   repository = "https://kyverno.github.io/kyverno/"
   chart      = "kyverno"
-  version    = "3.3.7" // TODO: make an input var?
+  version    = "3.5.3"
 
   values = [
     file(local.kyverno.value_file),
@@ -61,6 +61,5 @@ resource "kubectl_manifest" "vendor_policies" {
 
   depends_on = [
     helm_release.kyverno,
-    terraform_data.linkerd_policy_crds_discoverable, # vendor policies reference Linkerd CRDs (policy.linkerd.io/v1beta3/Server)
   ]
 }
