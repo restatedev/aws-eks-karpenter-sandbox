@@ -1,5 +1,14 @@
 crds:
   install: true
+global:
+  crdWatcher: true
+  tolerations:
+  - effect: NoSchedule
+    key: CriticalAddonsOnly
+    value: "true"
+  - effect: NoSchedule
+    key: karpenter.sh/controller
+    value: "true"
 admissionController:
   replicas: 3
   topologySpreadConstraints:
@@ -38,19 +47,3 @@ cleanupController:
   replicas: 1
 reportsController:
   replicas: 1
-
-global:
-  tolerations:
-  - effect: NoSchedule
-    key: CriticalAddonsOnly
-    value: "true"
-  - effect: NoSchedule
-    key: karpenter.sh/controller
-    value: "true"
-
-webhooksCleanup:
-  image:
-    repository: bitnamilegacy/kubectl
-policyReportsCleanup:
-  image:
-    repository: bitnamilegacy/kubectl

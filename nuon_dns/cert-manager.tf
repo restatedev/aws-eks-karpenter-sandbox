@@ -54,6 +54,14 @@ resource "helm_release" "cert_manager" {
   # toleration require to allow these to run on the main karpenter mng ng
   values = [
     yamlencode({
+      # Use public recursive resolvers for DNS-01 propagation checks. Without
+      # this, cert-manager discovers the private zone's NS from inside the VPC
+      # and queries it directly — which fails because private zone NS servers
+      # refuse queries that don't come through the VPC resolver.
+      extraArgs = [
+        "--dns01-recursive-nameservers-only",
+        "--dns01-recursive-nameservers=1.1.1.1:53",
+      ]
       resources = {
         requests = {
           cpu    = "10m",

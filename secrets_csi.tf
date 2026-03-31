@@ -101,7 +101,7 @@ resource "aws_iam_role_policy" "secrets_pod_identity" {
 resource "aws_eks_pod_identity_association" "ingress" {
   cluster_name    = module.eks.cluster_name
   namespace       = "restate-cloud-ingress"
-  service_account = "default"
+  service_account = "restate-cloud-ingress"
   role_arn        = aws_iam_role.secrets_pod_identity.arn
   tags            = local.tags
 }
@@ -109,7 +109,8 @@ resource "aws_eks_pod_identity_association" "ingress" {
 resource "aws_eks_pod_identity_association" "tunnel" {
   cluster_name    = module.eks.cluster_name
   namespace       = "restate-cloud-tunnel"
-  service_account = "default"
+  service_account = "restate-cloud-tunnel"
   role_arn        = aws_iam_role.secrets_pod_identity.arn
   tags            = local.tags
 }
+
