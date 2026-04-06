@@ -1,0 +1,33 @@
+---
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Format check
+        run: terraform fmt -check -recursive -diff .
+      - name: Validate
+        if: ${{ !cancelled() }}
+        run: |
+          ok=true
+          # nuon_dns excluded: uses helm set blocks incompatible with provider v3
+          for dir in . linkerd subnet_tags; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false || ok=false
+            terraform -chdir="$dir" validate || ok=false
+            echo "::endgroup::"
+          done
+          $ok

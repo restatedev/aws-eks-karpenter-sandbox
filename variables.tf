@@ -282,8 +282,8 @@ variable "karpenter_ec2nodeclass_default_metadata_options" {
   type        = any
   description = "Metadata options for default karpenter ec2 nodepool. Defaults to the suggested defaults."
   default = {
-    httpEndpoint            = "enabled"
-    httpProtocolIPv6        = "disabled"
+    httpEndpoint     = "enabled"
+    httpProtocolIPv6 = "disabled"
     # Hop limit 2 required: pods traverse an extra network hop through the container
     # bridge to reach IMDS. At limit 1, IMDS requests time out and pods can't detect
     # the AWS region or assume their Pod Identity role (e.g. for S3 snapshot access).
