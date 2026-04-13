@@ -128,3 +128,11 @@ output "restate_environment_role" {
   description = "The RestateEnvironment IAM role for Restate pods, assumed via EKS Pod Identity. Customers can attach additional policies for their own use cases."
 }
 
+output "restate_support_role" {
+  value = {
+    arn  = aws_iam_role.restate_support.arn
+    name = aws_iam_role.restate_support.name
+  }
+  description = "Read-only IAM role for Restate support staff, assumed via the runner's maintenance role."
+}
+
