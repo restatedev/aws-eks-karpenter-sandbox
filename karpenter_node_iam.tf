@@ -51,6 +51,66 @@ resource "aws_iam_role_policy_attachments_exclusive" "karpenter_node" {
   policy_arns = local.karpenter_node_iam_role_policy_arns
 }
 
+resource "terraform_data" "karpenter_node_policy_assert" {
+  triggers_replace = {
+    role_name           = aws_iam_role.karpenter_node.name
+    expected_policy_set = join(",", sort(local.karpenter_node_iam_role_policy_arns))
+  }
+
+  lifecycle {
+    replace_triggered_by = [aws_iam_role_policy_attachments_exclusive.karpenter_node]
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/usr/bin/env", "bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+
+      export AWS_PAGER=""
+      ROLE_NAME="${self.triggers_replace.role_name}"
+      EXPECTED_POLICY_ARNS=$(cat <<'EOF'
+${join("\n", sort(local.karpenter_node_iam_role_policy_arns))}
+EOF
+)
+
+      for attempt in $(seq 1 24); do
+        ACTUAL_POLICY_ARNS=$(aws iam list-attached-role-policies \
+          --role-name "$ROLE_NAME" \
+          --query 'AttachedPolicies[].PolicyArn' \
+          --output text | tr '\t' '\n' | sed '/^$/d' | sort || true)
+
+        ALL_PRESENT=1
+        while IFS= read -r policy_arn; do
+          [ -z "$policy_arn" ] && continue
+
+          if ! printf '%s\n' "$ACTUAL_POLICY_ARNS" | grep -Fxq "$policy_arn"; then
+            ALL_PRESENT=0
+            break
+          fi
+        done <<EOF
+$EXPECTED_POLICY_ARNS
+EOF
+
+        if [ "$ALL_PRESENT" -eq 1 ]; then
+          exit 0
+        fi
+
+        sleep 5
+      done
+
+      echo "Karpenter node IAM role is missing expected attached policies." >&2
+      echo "Role: $ROLE_NAME" >&2
+      echo "Expected:" >&2
+      printf '%s\n' "$EXPECTED_POLICY_ARNS" >&2
+      echo "Actual:" >&2
+      printf '%s\n' "$ACTUAL_POLICY_ARNS" >&2
+      exit 1
+    EOT
+  }
+
+  depends_on = [aws_iam_role_policy_attachments_exclusive.karpenter_node]
+}
+
 // Move the existing upstream-managed role into the root module before the
 // module is switched to an externally managed role.
 moved {
