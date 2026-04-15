@@ -13,11 +13,12 @@ locals {
   }
 }
 
-# NOTE: we use an instance_profile because the role changes between provisions
-#       but the role is immutable on the ec2nodeclass
+# Keep a stable instance profile name for the EC2NodeClass and manage the
+# backing node role in the root module so applies cannot detach the Karpenter
+# node policies via upstream attachment replacement.
 resource "aws_iam_instance_profile" "karpenter" {
   name = local.karpenter.instance_profile_name
-  role = module.karpenter.node_iam_role_name
+  role = aws_iam_role.karpenter_node.name
 }
 
 module "karpenter" {
@@ -27,12 +28,10 @@ module "karpenter" {
   cluster_name = local.karpenter.cluster_name
   namespace    = local.karpenter.namespace
 
-  # Create a dedicated node IAM role for Karpenter-managed nodes
-  create_node_iam_role = true
-  node_iam_role_additional_policies = {
-    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  }
-  node_iam_role_use_name_prefix = false
+  # Root-manage the node IAM role so Terraform never replaces the upstream
+  # attachment resources that can detach the live policies during reprovision.
+  create_node_iam_role = false
+  node_iam_role_arn    = aws_iam_role.karpenter_node.arn
 
   create_instance_profile = false
 
