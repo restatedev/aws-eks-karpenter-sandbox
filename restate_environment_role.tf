@@ -54,9 +54,9 @@ resource "aws_iam_role_policy" "restate_environment_s3" {
         Resource = "${var.restate_environment_storage_bucket_arn}/$${aws:PrincipalTag/kubernetes-namespace}/*"
       },
       {
-        Sid    = "AllowListBucketObjects"
-        Effect = "Allow"
-        Action = ["s3:ListBucket"]
+        Sid      = "AllowListBucketObjects"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
         Resource = var.restate_environment_storage_bucket_arn
         Condition = {
           StringLike = {
