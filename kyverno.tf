@@ -45,21 +45,54 @@ resource "kubectl_manifest" "default_policies" {
   ]
 }
 
-resource "kubectl_manifest" "vendor_policies" {
+locals {
+  // Split vendor policies into RBAC resources (ClusterRoles/Bindings) and
+  // Kyverno policies (ClusterPolicy). Kyverno's admission webhook validates
+  // generate rules at submission time, checking that its SA has permissions
+  // for the referenced GVRs. The RBAC resources that grant those permissions
+  // must exist before the policies are applied, otherwise the webhook rejects
+  // them with "requires permissions list,get for resource ...".
+  vendor_policy_files = fileset(var.kyverno_policy_dir, "*.yaml")
+  vendor_policy_contents = {
+    for f in local.vendor_policy_files : f => file("${var.kyverno_policy_dir}/${f}")
+  }
+  vendor_rbac_policies = {
+    for f, content in local.vendor_policy_contents : f => content
+    if can(regex("\\nkind:\\s*Cluster(Role|RoleBinding)", content))
+  }
+  vendor_kyverno_policies = {
+    for f, content in local.vendor_policy_contents : f => content
+    if !can(regex("\\nkind:\\s*Cluster(Role|RoleBinding)", content))
+  }
+}
+
+resource "kubectl_manifest" "vendor_rbac" {
   provider = kubectl.main
 
-  for_each = fileset(var.kyverno_policy_dir, "*.yaml")
+  for_each  = local.vendor_rbac_policies
+  yaml_body = each.value
 
-  yaml_body = file("${var.kyverno_policy_dir}/${each.key}")
-
-  // Avoid destroy-time cycle: Terraform state retains a stale depends_on on
-  // module.linkerd from a prior apply, creating a cycle through the kubectl
-  // provider and EKS cluster during destroy planning.
   lifecycle {
     create_before_destroy = true
   }
 
   depends_on = [
     helm_release.kyverno,
+  ]
+}
+
+resource "kubectl_manifest" "vendor_policies" {
+  provider = kubectl.main
+
+  for_each  = local.vendor_kyverno_policies
+  yaml_body = each.value
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  depends_on = [
+    helm_release.kyverno,
+    kubectl_manifest.vendor_rbac,
   ]
 }
