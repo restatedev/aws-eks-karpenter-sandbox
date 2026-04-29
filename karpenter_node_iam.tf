@@ -3,6 +3,19 @@ data "aws_partition" "current" {}
 locals {
   karpenter_node_iam_role_name          = "Karpenter-${local.cluster_name}"
   karpenter_node_iam_role_policy_prefix = "arn:${data.aws_partition.current.partition}:iam::aws:policy"
+
+  karpenter_node_policy_arns = sort(concat(
+    [
+      "${local.karpenter_node_iam_role_policy_prefix}/AmazonEKSWorkerNodePolicy",
+      "${local.karpenter_node_iam_role_policy_prefix}/AmazonEC2ContainerRegistryReadOnly",
+      "${local.karpenter_node_iam_role_policy_prefix}/AmazonSSMManagedInstanceCore",
+    ],
+    module.eks.cluster_ip_family == "ipv6" ? [
+      "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:policy/AmazonEKS_CNI_IPv6_Policy",
+      ] : [
+      "${local.karpenter_node_iam_role_policy_prefix}/AmazonEKS_CNI_Policy",
+    ],
+  ))
 }
 
 data "aws_iam_policy_document" "karpenter_node_assume_role" {
@@ -17,9 +30,9 @@ data "aws_iam_policy_document" "karpenter_node_assume_role" {
   }
 }
 
-// Manage the Karpenter node role outside the upstream module so we can move the
-// existing policy attachments into the root module without detaching the live
-// policies from the role during migration.
+// Manage the Karpenter node role outside the upstream module so Terraform owns
+// a single declarative policy set for the role instead of a set of individually
+// replaceable attachments.
 resource "aws_iam_role" "karpenter_node" {
   name        = local.karpenter_node_iam_role_name
   path        = "/"
@@ -32,35 +45,6 @@ resource "aws_iam_role" "karpenter_node" {
   tags                  = {}
 }
 
-resource "aws_iam_role_policy_attachment" "karpenter_node_worker" {
-  role       = aws_iam_role.karpenter_node.name
-  policy_arn = "${local.karpenter_node_iam_role_policy_prefix}/AmazonEKSWorkerNodePolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "karpenter_node_ecr" {
-  role       = aws_iam_role.karpenter_node.name
-  policy_arn = "${local.karpenter_node_iam_role_policy_prefix}/AmazonEC2ContainerRegistryReadOnly"
-}
-
-resource "aws_iam_role_policy_attachment" "karpenter_node_ssm" {
-  role       = aws_iam_role.karpenter_node.name
-  policy_arn = "${local.karpenter_node_iam_role_policy_prefix}/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_role_policy_attachment" "karpenter_node_cni_ipv4" {
-  count = module.eks.cluster_ip_family == "ipv4" ? 1 : 0
-
-  role       = aws_iam_role.karpenter_node.name
-  policy_arn = "${local.karpenter_node_iam_role_policy_prefix}/AmazonEKS_CNI_Policy"
-}
-
-resource "aws_iam_role_policy_attachment" "karpenter_node_cni_ipv6" {
-  count = module.eks.cluster_ip_family == "ipv6" ? 1 : 0
-
-  role       = aws_iam_role.karpenter_node.name
-  policy_arn = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:policy/AmazonEKS_CNI_IPv6_Policy"
-}
-
 // Move the existing upstream-managed role and attachment instances into the
 // root module before the module is switched to an externally managed role.
 moved {
@@ -68,27 +52,51 @@ moved {
   to   = aws_iam_role.karpenter_node
 }
 
-moved {
-  from = module.karpenter.aws_iam_role_policy_attachment.node["AmazonEKSWorkerNodePolicy"]
-  to   = aws_iam_role_policy_attachment.karpenter_node_worker
+resource "aws_iam_role_policy_attachments_exclusive" "karpenter_node" {
+  role_name   = aws_iam_role.karpenter_node.name
+  policy_arns = local.karpenter_node_policy_arns
 }
 
-moved {
-  from = module.karpenter.aws_iam_role_policy_attachment.node["AmazonEC2ContainerRegistryReadOnly"]
-  to   = aws_iam_role_policy_attachment.karpenter_node_ecr
+// Step 1 moved the old upstream attachment instances into these root resources.
+// Once every install has crossed that migration, remove those intermediate
+// resources from state without detaching the live policies and let the
+// exclusive attachment set above take over steady-state ownership.
+removed {
+  from = aws_iam_role_policy_attachment.karpenter_node_worker
+
+  lifecycle {
+    destroy = false
+  }
 }
 
-moved {
-  from = module.karpenter.aws_iam_role_policy_attachment.node_additional["AmazonSSMManagedInstanceCore"]
-  to   = aws_iam_role_policy_attachment.karpenter_node_ssm
+removed {
+  from = aws_iam_role_policy_attachment.karpenter_node_ecr
+
+  lifecycle {
+    destroy = false
+  }
 }
 
-moved {
-  from = module.karpenter.aws_iam_role_policy_attachment.node["AmazonEKS_CNI_Policy"]
-  to   = aws_iam_role_policy_attachment.karpenter_node_cni_ipv4[0]
+removed {
+  from = aws_iam_role_policy_attachment.karpenter_node_ssm
+
+  lifecycle {
+    destroy = false
+  }
 }
 
-moved {
-  from = module.karpenter.aws_iam_role_policy_attachment.node["AmazonEKS_CNI_IPv6_Policy"]
-  to   = aws_iam_role_policy_attachment.karpenter_node_cni_ipv6[0]
+removed {
+  from = aws_iam_role_policy_attachment.karpenter_node_cni_ipv4
+
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = aws_iam_role_policy_attachment.karpenter_node_cni_ipv6
+
+  lifecycle {
+    destroy = false
+  }
 }
