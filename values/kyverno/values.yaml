@@ -47,3 +47,10 @@ cleanupController:
   replicas: 1
 reportsController:
   replicas: 1
+
+# The chart's pre-delete hook scales Kyverno to 0 and cleans up the dynamic
+# webhook configurations Kyverno creates at runtime. We don't need it: when
+# we tear down a sandbox the cluster goes with it, so any orphaned webhook
+# configs are deleted as part of the cluster delete.
+webhooksCleanup:
+  enabled: false
