@@ -114,3 +114,11 @@ resource "aws_eks_pod_identity_association" "tunnel" {
   tags            = local.tags
 }
 
+resource "aws_eks_pod_identity_association" "region_facts" {
+  cluster_name    = module.eks.cluster_name
+  namespace       = "restate-cloud-region-facts"
+  service_account = "restate-cloud-region-facts"
+  role_arn        = aws_iam_role.secrets_pod_identity.arn
+  tags            = local.tags
+}
+
