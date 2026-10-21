@@ -37,6 +37,40 @@ module "karpenter" {
 
   enable_v1_permissions = true
 
+  # Permissions the controller needs on Karpenter 1.7+ that this module's v1
+  # policy predates. Mirrors the upstream controller policy:
+  # https://karpenter.sh/docs/reference/cloudformation/
+  # - iam:ListInstanceProfiles is required from 1.7 (instance profile paths).
+  # - ec2:DescribeInstanceStatus is required from 1.12 (instance health checks).
+  # - ec2:DescribeCapacityReservations and ec2:DescribePlacementGroups are only
+  #   used when an EC2NodeClass selects ODCRs or placement groups; granted so
+  #   NodeClass validation never fails on a missing read permission.
+  iam_policy_statements = [
+    {
+      sid    = "AllowRegionalReadActionsKarpenterLatest"
+      effect = "Allow"
+      actions = [
+        "ec2:DescribeCapacityReservations",
+        "ec2:DescribeInstanceStatus",
+        "ec2:DescribePlacementGroups",
+      ]
+      resources = ["*"]
+      conditions = [
+        {
+          test     = "StringEquals"
+          variable = "aws:RequestedRegion"
+          values   = [var.region]
+        },
+      ]
+    },
+    {
+      sid       = "AllowUnscopedInstanceProfileListAction"
+      effect    = "Allow"
+      actions   = ["iam:ListInstanceProfiles"]
+      resources = ["*"]
+    },
+  ]
+
   enable_irsa                     = true
   irsa_oidc_provider_arn          = module.eks.oidc_provider_arn
   irsa_namespace_service_accounts = ["kube-system:karpenter"]
@@ -92,7 +126,7 @@ resource "helm_release" "karpenter" {
   repository = "oci://public.ecr.aws/karpenter"
   version    = local.karpenter.version
 
-  # https://github.com/aws/karpenter-provider-aws/blob/v1.2.2/charts/karpenter/values.yaml
+  # https://github.com/aws/karpenter-provider-aws/blob/v1.14.1/charts/karpenter/values.yaml
   values = [
     yamlencode({
       replicas : var.karpenter_replica_count

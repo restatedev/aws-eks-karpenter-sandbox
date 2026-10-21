@@ -256,7 +256,7 @@ variable "default_instance_type" {
 # karpenter
 variable "karpenter_version" {
   type        = string
-  default     = "1.4.0"
+  default     = "1.14.1"
   description = "The karpenter version you'd like to install."
 }
 
