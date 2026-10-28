@@ -21,6 +21,52 @@ resource "aws_iam_instance_profile" "karpenter" {
   role = aws_iam_role.karpenter_node.name
 }
 
+# Permissions the controller needs on Karpenter 1.7+ that the module's v1
+# policy predates. Mirrors the upstream controller policy:
+# https://karpenter.sh/docs/reference/cloudformation/
+# - iam:ListInstanceProfiles is required from 1.7 (instance profile paths).
+# - ec2:DescribeInstanceStatus is required from 1.12 (instance health checks).
+# - ec2:DescribeCapacityReservations and ec2:DescribePlacementGroups are only
+#   used when an EC2NodeClass selects ODCRs or placement groups; granted so
+#   NodeClass validation never fails on a missing read permission.
+# A separate policy, because the module's controller policy is already close to
+# IAM's 6,144-character managed-policy limit for long cluster names.
+data "aws_iam_policy_document" "karpenter_controller_extra" {
+  statement {
+    sid    = "AllowRegionalReadActionsKarpenterLatest"
+    effect = "Allow"
+    actions = [
+      "ec2:DescribeCapacityReservations",
+      "ec2:DescribeInstanceStatus",
+      "ec2:DescribePlacementGroups",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [var.region]
+    }
+  }
+
+  statement {
+    sid       = "AllowUnscopedInstanceProfileListAction"
+    effect    = "Allow"
+    actions   = ["iam:ListInstanceProfiles"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "karpenter_controller_extra" {
+  name_prefix = "KarpenterControllerExtra-"
+  description = "Karpenter 1.7+ controller permissions not in the module's v1 policy"
+  policy      = data.aws_iam_policy_document.karpenter_controller_extra.json
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_controller_extra" {
+  role       = module.karpenter.iam_role_name
+  policy_arn = aws_iam_policy.karpenter_controller_extra.arn
+}
+
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
   version = "20.33.1"
@@ -92,7 +138,7 @@ resource "helm_release" "karpenter" {
   repository = "oci://public.ecr.aws/karpenter"
   version    = local.karpenter.version
 
-  # https://github.com/aws/karpenter-provider-aws/blob/v1.2.2/charts/karpenter/values.yaml
+  # https://github.com/aws/karpenter-provider-aws/blob/v1.14.1/charts/karpenter/values.yaml
   values = [
     yamlencode({
       replicas : var.karpenter_replica_count
@@ -131,7 +177,9 @@ resource "helm_release" "karpenter" {
   }
 
   depends_on = [
-    helm_release.karpenter_crd
+    helm_release.karpenter_crd,
+    # The controller fails NodeClass validation without these.
+    aws_iam_role_policy_attachment.karpenter_controller_extra,
   ]
 }
 
