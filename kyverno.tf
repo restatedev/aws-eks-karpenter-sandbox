@@ -20,7 +20,7 @@ resource "helm_release" "kyverno" {
   name       = "kyverno"
   repository = "https://kyverno.github.io/kyverno/"
   chart      = "kyverno"
-  version    = "3.5.3"
+  version    = "3.9.2"
 
   values = [
     file(local.kyverno.value_file),
