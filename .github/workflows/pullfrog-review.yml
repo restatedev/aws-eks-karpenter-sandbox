@@ -1,0 +1,45 @@
+# Once Validate passes on a PR, ask Pullfrog to review it. This module is the foundation of every
+# install that pins it, so the review only comments: approval stays with a human.
+name: Pullfrog review
+
+on:
+  workflow_run:
+    workflows: [Validate]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.pull_requests[0] != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Skip drafts and superseded commits
+        id: gate
+        run: |
+          pr=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json isDraft,headRefOid)
+          if [ "$(jq -r .isDraft <<<"$pr")" = true ] \
+            || [ "$(jq -r .headRefOid <<<"$pr")" != "$HEAD_SHA" ]; then
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dispatch Pullfrog
+        if: steps.gate.outputs.eligible == 'true'
+        run: |
+          gh workflow run pullfrog.yml --repo "$GITHUB_REPOSITORY" \
+            -f name="Review PR #$PR" \
+            -f prompt="Review pull request #$PR in $GITHUB_REPOSITORY at commit $HEAD_SHA (CI has passed). Read the diff with gh pr diff $PR. This Terraform module is the foundation of every install that pins it: look for changes that would replace or destroy existing resources on apply, break installs that do not set a new variable, or weaken security. Submit a comment review listing any problems, or saying you found none. Never approve."
